@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  output:
+    ansi:
+      enabled: ALWAYS
+  datasource:
+    url: jdbc:mysql://localhost:3306/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: testtest
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+search-settings:
+  maxPercentageOfPage: 80
+
+indexing-settings:
+  sites:
+   - url: https://www.playback.ru
+     name: PlayBack.Ru
+   - url: https://ipfran.ru
+     name: ИПФ РАН
+#   - url: https://skillbox.ru
+#     name: Skillbox
+
+jsoup:
+  userAgent: Mozilla/5.0 (Windows; U; WindowsNT5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referrer: http://www.google.com
+  timeout: 10000
+
+logging:
+  level:
+    root: info
