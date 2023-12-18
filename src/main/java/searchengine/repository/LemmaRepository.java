@@ -47,24 +47,6 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Integer>{
             @Param("p_lemma")   String lemma
     );
 
-    /*
-    Отбор лемм по условию (столкнулся с проблеммой возврата. А как в Map сделать возврат результата ???)
-    @Query(value = "WITH" +
-            "  page_count AS (SELECT COUNT(*) AS cnt" +
-            "                   FROM page p " +
-            "                  WHERE p.site_id = IFNULL(:p_site_id, p.site_id)" +
-            "                )," +
-            "  v as (SELECT l.lemma, IFNULL(SUM(l.frequency), 0) AS freq" +
-            "          FROM lemma l " +
-            "         WHERE l.lemma IN (:p_lemma_list)" +
-            "           AND l.site_id = IFNULL(:p_site_id, l.site_id)" +
-            "         GROUP BY l.lemma" +
-            "       )" +
-            " SELECT v.lemma, v.freq FROM v WHERE (v.freq / (SELECT cnt FROM page_count)) * 100 <= 83.4; ",
-            nativeQuery = true
-    )
-    */
-
     @Modifying
     @Transactional
     @Query(value = "DELETE FROM lemma WHERE site_id = :p_site_id", nativeQuery = true)
@@ -88,35 +70,4 @@ public interface LemmaRepository extends JpaRepository<LemmaEntity, Integer>{
     )
     void deleteByPageId(@Param("p_page_id") Integer pageId);
 
-    /*
-        @Modifying
-        @Transactional
-        @Query(value = "UPDATE lemma" +
-                       "   SET frequency = frequency - 1" +
-                       " WHERE id IN (SELECT lemma_id FROM `index` WHERE page_id = :page_id)",
-               nativeQuery = true
-        )
-        void deleteByPage(@Param("page_id") int pageId);
-
-        @Modifying
-        @Transactional
-        @Query(value = "UPDATE lemma" +
-                       "   SET frequency = frequency - 1" +
-                       " WHERE id IN (:ids)",
-               nativeQuery = true
-        )
-        void updateByLemmaIds(@Param("ids") List<Integer> ids);
-
-        @Modifying
-        @Transactional
-        @Query(value = "DELETE FROM lemma" +
-                       " WHERE id IN (:ids) AND frequency = 0",
-               nativeQuery = true
-        )
-        void deleteByLemmaIds(@Param("ids") List<Integer> ids);
-
-        @Transactional
-        @Query(value = "SELECT lemma_id FROM `index` WHERE page_id = :page_id", nativeQuery = true)
-        List<Integer> findLemmasByPageId(@Param("page_id") int pageId);
-    */
 }

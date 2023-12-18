@@ -4,7 +4,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import searchengine.Application;
-import searchengine.Utility.StrUtl;
+import searchengine.utility.StrUtl;
 import searchengine.config.JsoupConfig;
 import searchengine.model.*;
 import searchengine.repository.DBRepository;
@@ -68,7 +68,9 @@ public class PageParser extends RecursiveTask<Integer> {
 
     private void stopIndexing() {
         AppContext.decrementThreads();
-        dbRepository.setStatusToIndexFailed(siteId, "Индексирование остановлено пользователем");
+        String msg = "Индексирование остановлено пользователем";
+        dbRepository.setStatusToIndexFailed(siteId, msg);
+        Application.LOGGER.info(msg);
     }
 
     void savePage() {
@@ -91,14 +93,11 @@ public class PageParser extends RecursiveTask<Integer> {
     }
 
     void parsePage() {
-        // не хорошо постоянно создавать объекты
-        // Map<String, Integer> lemmas = new Parser(LemmaHelper.newInstance()).getLemmas(pageHTML);
-
         Map<String, Integer> lemmas = parser.getLemmas(pageHTML);
 
         if (lemmas.size() == 0) {
             String errMsg = "Ошибка при распознавании страницы " + pageAddress;
-            Application.logger.error(errMsg);
+            Application.LOGGER.error(errMsg);
             dbRepository.setLastError(siteId, errMsg);
             AppContext.badAddresses.add(pageAddress);
             return;
@@ -135,7 +134,6 @@ public class PageParser extends RecursiveTask<Integer> {
             throw new RuntimeException(ex);
         }
 
-        // Application.logger.info("Processed page: " + pageAddress);
         PageWithMessage parsedPage = Parser.getHTMLPage(pageAddress, jsoupConfig);
 
         if (parsedPage.getMessage() != null) {
@@ -151,7 +149,9 @@ public class PageParser extends RecursiveTask<Integer> {
         }
 
         if (isRoot && (statusCode != 200 || pageHTML.isEmpty())) {
-            dbRepository.setStatusToIndexFailed(siteId, "Невозможно получить главную страницу сайта");
+            String msg = "Невозможно получить главную страницу сайта";
+            dbRepository.setStatusToIndexFailed(siteId, msg);
+            Application.LOGGER.warn(msg);
         }
          else {
              dbRepository.updateStatusTimeById(siteId);
@@ -216,7 +216,6 @@ public class PageParser extends RecursiveTask<Integer> {
              dbRepository.setStatusToIndexed(siteId);
          }
 
-        // Application.logger.info("page = " + pageAddress + " from = " + fromPage + ": (finished) " + AppContext.getThreadCount() + " (" + AppContext.checkedAddresses.size() + "/" + AppContext.badAddresses.size() + ")");
         return res;
     }
 

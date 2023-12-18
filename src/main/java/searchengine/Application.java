@@ -7,10 +7,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class Application {
-    public static final Logger logger = LoggerFactory.getLogger(Application.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
-        logger.info("==== Indexing Web Application started ====");
+        LOGGER.info("==== Indexing Web Application started ====");
     }
 }

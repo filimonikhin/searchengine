@@ -40,7 +40,7 @@ public class StartIndexing extends Thread {
     public void run() {
         try {
             ForkJoinPool pool = new ForkJoinPool();
-            Application.logger.info("==== Start indexing site: " + url + " ====");
+            Application.LOGGER.info("==== Start indexing site: " + url + " ====");
 
             PageParserParams params = PageParserParams.builder()
                                         .pageAddress(url)
@@ -55,10 +55,10 @@ public class StartIndexing extends Thread {
 
             Integer res = pool.invoke(new PageParser(params));
             dbRepository.setStatusToIndexed(siteId);
-            Application.logger.info("==== Stop indexing site: " + url + " ====");
+            Application.LOGGER.info("==== Stop indexing site: " + url + " ====");
 
         } catch (Exception ex) {
-            Application.logger.error("==== Error indexing site: " + ex.getMessage() + " ====");
+            Application.LOGGER.error("==== Error indexing site: " + ex.getMessage() + " ====");
         }
     }
 

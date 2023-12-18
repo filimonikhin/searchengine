@@ -3,7 +3,7 @@ package searchengine.repository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import searchengine.Application;
-import searchengine.Utility.StrUtl;
+import searchengine.utility.StrUtl;
 import searchengine.model.*;
 import java.net.URI;
 import java.net.URL;
@@ -51,7 +51,7 @@ public class DBRepository {
 
             return siteRepository.findByUrl(siteURL);
         } catch(Exception ex) {
-            Application.logger.error(ex.getMessage());
+            Application.LOGGER.error("Сайт " + url + " не определен", ex);
         }
 
       return null;
@@ -61,12 +61,13 @@ public class DBRepository {
     public PageEntity getPage(String path, String root, Integer siteId) {
         path = StrUtl.nvl(path, "");
         root = StrUtl.nvl(root, "");
+        String path2Find = "";
 
         try {
-            String path2Find = path.equals(root) ? "/" : path.substring(root.length());
+            path2Find = path.equals(root) ? "/" : path.substring(root.length());
             return pageRepository.findBySiteIdAndPath(siteId, path2Find);
         } catch (NullPointerException ex) {
-            ex.fillInStackTrace();
+            Application.LOGGER.error("Страница " + path2Find + " не определена", ex);
         }
 
         return null;
@@ -112,11 +113,8 @@ public class DBRepository {
     public void deletePage(Integer pageId) {
         // декрементируем леммы
         lemmaRepository.updateByPageId(pageId);
-
         // удаляем леммы у которых frequency = 0
         lemmaRepository.deleteByPageId(pageId);
-        // lemmaRepository.deleteByPage(pageId);
-
         indexRepository.deleteByPage(pageId);
         pageRepository.deleteById(pageId);
     }

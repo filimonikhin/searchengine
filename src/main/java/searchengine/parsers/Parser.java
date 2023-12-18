@@ -3,7 +3,7 @@ package searchengine.parsers;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import searchengine.Application;
-import searchengine.Utility.StrUtl;
+import searchengine.utility.StrUtl;
 import searchengine.config.JsoupConfig;
 import searchengine.model.PageEntity;
 import searchengine.model.PageWithMessage;
@@ -11,7 +11,6 @@ import searchengine.services.AppContext;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class Parser {
    private volatile LemmaHelper lemmaHelper;
@@ -22,7 +21,6 @@ public class Parser {
 
     public Map<String, Integer> getLemmas(String htmlText) {
         try {
-            //return LemmaHelper.newInstance().getRussianLemmas(Jsoup.parse(htmlText).text());
             return lemmaHelper.getRussianLemmas(Jsoup.parse(htmlText).text());
         } catch (Exception e) {
             return new HashMap<>();
@@ -56,15 +54,13 @@ public class Parser {
             result.setPage(page);
 
         } catch (SocketTimeoutException ex) {
-            // Application.logger.error(ex.getMessage() + " Path: " + path);
-            // Application.logger.error(ex.toString() + " Path: " + path);
+            Application.LOGGER.error("Path: " + path, ex);
             AppContext.badAddresses.add(path);
             page.setCode(HttpURLConnection.HTTP_CLIENT_TIMEOUT);
             page.setContent("");
             result.setPage(page);
         } catch (Exception ex) {
-            // Application.logger.error(ex.getMessage() + " Path: " + path);
-            Application.logger.error(ex.toString() + " Path: " + path);
+            Application.LOGGER.error("Path: " + path, ex);
             AppContext.badAddresses.add(path);
             page.setCode(HttpURLConnection.HTTP_BAD_REQUEST);
             page.setContent("");
@@ -83,7 +79,6 @@ public class Parser {
         }
 
         HashSet<String> words = new HashSet<>();
-        //List<String> rusWords = lemmaHelper.getRussianLowerCaseWords(text);
         List<String> rusWords = lemmaHelper.getRussianWords(text);
 
         for (String rusWord : rusWords) {
@@ -108,25 +103,7 @@ public class Parser {
                 }
             }
 
-            // оставляем только найденные слова по лемме
-//            Set<String> replacedWords = lemmaHelper.getRussianWords(snippet).stream()
-//                                                   .filter(s -> s.equals(rusWord))
-//                                                   .collect(Collectors.toSet());
-
-            //Set<String> replacedWords = new HashSet<>(lemmaHelper.getRussianWords(snippet));
-
-            //Set<String> replacedWords = new HashSet<>(Arrays.asList(snippet.split("\\s+")));
-//            replacedWords.removeAll(replacedWords.stream()
-//                                                  .filter(s->!s.equalsIgnoreCase(rusWord))
-//                                                  .collect(Collectors.toList()));
-
-            // выделяем слова жирным
-//            for (String word : replacedWords) {
-//                snippet = snippet.replaceAll("(?<!\\\\S)" + word + "(?!\\\\S)", "<b>" + word + "</b>");
-//            }
-
             snippet = snippet.replaceAll("(?<!\\\\S)" + rusWord + "(?!\\\\S)", "<b>" + rusWord + "</b>");
-            //break;
         }
 
         int openTagPos = snippet.indexOf("<b><b>");

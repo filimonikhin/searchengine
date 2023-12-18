@@ -2,8 +2,9 @@ package searchengine.services;
 
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Service;
-import searchengine.Utility.MapUtl;
-import searchengine.Utility.StrUtl;
+import searchengine.Application;
+import searchengine.utility.MapUtl;
+import searchengine.utility.StrUtl;
 import searchengine.config.SearchConfig;
 import searchengine.config.Site;
 import searchengine.config.SiteList;
@@ -40,16 +41,17 @@ public class SearchServiceImpl implements SearchService {
 
     @Override
     public SearchResponse search(SearchQuery searchQuery) {
+        String msg = "Задан поисковый запрос \"" + searchQuery.getQuery()
+                   + "\" для сайта \"" + searchQuery.getSite() + "\"";
 
-        // if (1 == 1) {
-        //     return new SearchResponse(false, "Query: " + searchQuery.getQuery() + " Site: " + searchQuery.getSite());
-        // }
+        Application.LOGGER.info(msg);
 
         try {
             String query = StrUtl.nvl(searchQuery.getQuery(), "");
-
             if (query.isBlank()) {
-                return new SearchResponse(false, "Задан пустой поисковый запрос");
+                msg = "Задан пустой поисковый запрос";
+                Application.LOGGER.warn(msg);
+                return new SearchResponse(false, msg);
             }
 
             // результирующий список
@@ -61,7 +63,6 @@ public class SearchServiceImpl implements SearchService {
             Map<String, Integer> lemmas = parser.getLemmas(query);
 
             if (lemmas.size() == 0) {
-                // return new SearchResponse(false, "Запрос не содержит лемм для поиска");
                 return new SearchResponse(false, "", 0, resultSearhList);
             }
 
@@ -72,7 +73,9 @@ public class SearchServiceImpl implements SearchService {
                 siteEntity = dbRepository.getSite(searchQuery.getSite());
 
                 if (siteEntity == null) {
-                    return new SearchResponse(false, "Сайт " + searchQuery.getSite() + " не найден в БД");
+                    msg = "Сайт " + searchQuery.getSite() + " не найден в БД";
+                    Application.LOGGER.warn(msg);
+                    return new SearchResponse(false, msg);
                 }
 
                 siteId = siteEntity.getId();
@@ -88,7 +91,6 @@ public class SearchServiceImpl implements SearchService {
             Map<String, Integer> ascLemmas = MapUtl.sortMapByValueAsc(dbRepository.getFilteredLemmas(lemmas.keySet(), siteId, searchConfig.getMaxPercentageOfPage()));
 
             if (ascLemmas.size() == 0) {
-                //return new SearchResponse(false, "Запрос не содержит лемм для поиска");
                 return new SearchResponse(false, "", 0, resultSearhList);
             }
 
@@ -119,8 +121,6 @@ public class SearchServiceImpl implements SearchService {
                         .relevance(pageEntry.getValue() / maxRank)
                         .build();
                 resultSearhList.add(dataItem);
-
-                // Application.logger.info(dbRepository.findSiteById(page.getSiteId()).getUrl() + page.getPath() + " - " + pageEntry.getValue() / maxRank);
 
                 if (--limitCount == 0) {
                     break;
@@ -188,10 +188,6 @@ public class SearchServiceImpl implements SearchService {
         } else {
 
             descPages = MapUtl.sortMapByValueDesc(allFoundPages);
-                    // отладка:  просмотр данных по одной странице при поиске
-                    // .entrySet().stream()
-                    // .filter(e-> e.getKey().equals(Integer.valueOf(54316)))
-                    // .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         }
 
         return descPages;

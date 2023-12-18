@@ -73,7 +73,7 @@ public class IndexingServiceImpl implements IndexingService {
 
     @Override
     public Response indexPage(String url) {
-        Application.logger.info("==== Start indexing page: " + url + " ====");
+        Application.LOGGER.info("==== Start indexing page: " + url + " ====");
 
         if (AppContext.isIndexing()) {
             return new MessageResponse("Индексация уже запущена", HttpStatus.BAD_REQUEST);
@@ -126,7 +126,7 @@ public class IndexingServiceImpl implements IndexingService {
             Map<String, Integer> lemmas = new Parser(LemmaHelper.newInstance()).getLemmas(page2save.getContent());
             // Map<String, Integer> lemmas = Parser.getLemmas(page2save.getContent());
             dbRepository.saveLemmas(siteId, dbRepository.getPage(url_, siteEntity.getUrl(), siteId).getId(), lemmas);
-            Application.logger.info("==== Stop indexing page: " + url + " ====");
+            Application.LOGGER.info("==== Stop indexing page: " + url + " ====");
         } catch(IOException e) {
             throw new RuntimeException();
         }
