@@ -72,7 +72,7 @@ public class Parser {
 
     public String createSnippet(String text, Map<String, Integer> lemmas) {
         String snippet     = "";
-        int SNIPPET_LENGTH = 255;
+        int snippetLength = 255;
 
         if (StrUtl.nvl(text, "").isBlank()) {
             return snippet;
@@ -98,8 +98,8 @@ public class Parser {
                 snippet  = text.substring(text.toLowerCase().indexOf(rusWord.toLowerCase()));
 
                 // обрезаем до нужной длины
-                if (snippet.length() > SNIPPET_LENGTH) {
-                    snippet = snippet.substring(0, SNIPPET_LENGTH);
+                if (snippet.length() > snippetLength) {
+                    snippet = snippet.substring(0, snippetLength);
                 }
             }
 

@@ -15,7 +15,6 @@ import searchengine.model.PageEntity;
 import searchengine.model.PageWithMessage;
 import searchengine.model.SiteEntity;
 import searchengine.parsers.LemmaHelper;
-import searchengine.parsers.PageParser;
 import searchengine.parsers.Parser;
 import searchengine.repository.*;
 
@@ -52,7 +51,9 @@ public class IndexingServiceImpl implements IndexingService {
         List<Thread> threads = new ArrayList<>();
 
         sitesList.forEach(site -> {
-            DBRepository dbRepository = new DBRepository(siteRepository, pageRepository, lemmaRepository, indexRepository);
+            DBRepository dbRepository = new DBRepository(siteRepository, pageRepository,
+                                                          lemmaRepository, indexRepository);
+
             threads.add(new StartIndexing(site.getUrl(), site.getName(), dbRepository, jsoupConfig));
         });
 
@@ -72,32 +73,25 @@ public class IndexingServiceImpl implements IndexingService {
     }
 
     @Override
-    public Response indexPage(String url) {
-        Application.LOGGER.info("==== Start indexing page: " + url + " ====");
+    public Response indexPage(String pageUrl) {
+        Application.LOGGER.info("==== Start indexing page: " + pageUrl + " ====");
 
-        if (AppContext.isIndexing()) {
-            return new MessageResponse("Индексация уже запущена", HttpStatus.BAD_REQUEST);
-        }
-
-        if (url.isEmpty()) {
-            return new MessageResponse("Введена пустая строка", HttpStatus.BAD_REQUEST);
-        }
+        if (AppContext.isIndexing()) {return new MessageResponse("Индексация уже запущена", HttpStatus.BAD_REQUEST);}
+        if (pageUrl.isEmpty()) {return new MessageResponse("Введена пустая строка", HttpStatus.BAD_REQUEST);}
 
         // проверяем, что url должен начинаться как один из списка сайтов
-        if (!isPartOfSite(url)) {
+        if (!isPartOfSite(pageUrl)) {
             return new MessageResponse("Данная страница находится за пределами сайтов,\n" +
                     "указанных в конфигурационном файле", HttpStatus.BAD_REQUEST);
         }
 
         DBRepository dbRepository = new DBRepository(siteRepository, pageRepository, lemmaRepository, indexRepository);
-        SiteEntity siteEntity = dbRepository.getSite(url);
+        SiteEntity siteEntity = dbRepository.getSite(pageUrl);
 
-        if (siteEntity == null) {
-            return new MessageResponse("Сайт не индексирован", HttpStatus.BAD_REQUEST);
-        }
+        if (siteEntity == null) {return new MessageResponse("Сайт не индексирован", HttpStatus.BAD_REQUEST);}
 
         Integer siteId = siteEntity.getId();
-        PageWithMessage parsedPage = Parser.getHTMLPage(url, jsoupConfig);
+        PageWithMessage parsedPage = Parser.getHTMLPage(pageUrl, jsoupConfig);
 
         if (parsedPage.getMessage() != null) {
             dbRepository.setLastError(siteId, parsedPage.getMessage());
@@ -109,14 +103,12 @@ public class IndexingServiceImpl implements IndexingService {
             return new MessageResponse("Страницу не удалось прочитать", HttpStatus.BAD_REQUEST);
         }
 
-        String url_ = url + (url.equals(siteEntity.getUrl()) ? "/" : "");
-        PageEntity pageInDB = dbRepository.getPage(url_, siteEntity.getUrl(), siteId);
+        String url = pageUrl + (pageUrl.equals(siteEntity.getUrl()) ? "/" : "");
+        PageEntity pageInDB = dbRepository.getPage(url, siteEntity.getUrl(), siteId);
 
-        if (pageInDB != null) {
-            dbRepository.deletePage(pageInDB.getId());
-        }
+        if (pageInDB != null) {dbRepository.deletePage(pageInDB.getId());}
 
-        String path2Save = url_.substring(siteEntity.getUrl().length());
+        String path2Save = url.substring(siteEntity.getUrl().length());
         page2save.setSiteId(siteId);
         page2save.setPath(path2Save.isEmpty() ? "/" : path2Save);
 
@@ -124,9 +116,8 @@ public class IndexingServiceImpl implements IndexingService {
 
         try {
             Map<String, Integer> lemmas = new Parser(LemmaHelper.newInstance()).getLemmas(page2save.getContent());
-            // Map<String, Integer> lemmas = Parser.getLemmas(page2save.getContent());
-            dbRepository.saveLemmas(siteId, dbRepository.getPage(url_, siteEntity.getUrl(), siteId).getId(), lemmas);
-            Application.LOGGER.info("==== Stop indexing page: " + url + " ====");
+            dbRepository.saveLemmas(siteId, dbRepository.getPage(url, siteEntity.getUrl(), siteId).getId(), lemmas);
+            Application.LOGGER.info("==== Stop indexing page: " + pageUrl + " ====");
         } catch(IOException e) {
             throw new RuntimeException();
         }

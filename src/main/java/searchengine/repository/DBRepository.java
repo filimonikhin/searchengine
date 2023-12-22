@@ -14,8 +14,8 @@ import java.util.Set;
 
 @Service
 public class DBRepository {
-    // По условию задачи, исключать из полученного списка леммы, которые встречаются на слишком большом количестве страниц.
-    // Определить этот процент самостоятельно
+    // По условию задачи, исключать из полученного списка леммы, которые встречаются на слишком
+    // большом количестве страниц. Определить этот процент самостоятельно
     private static final int MAX_PERCENT_PAGE_BY_LEMMA = 80;
     private final SiteRepository siteRepository;
     private final PageRepository pageRepository;
@@ -34,24 +34,24 @@ public class DBRepository {
     }
 
     // поиск сайта по URL
-    public SiteEntity getSite(String url) {
+    public SiteEntity getSite(String siteUrl) {
 
         String mask = "^(http|https)://.*";
-        url = StrUtl.nvl(url.toLowerCase(), "");
+        siteUrl = StrUtl.nvl(siteUrl.toLowerCase(), "");
 
-        if (!url.matches(mask)) {
+        if (!siteUrl.matches(mask)) {
             return null;
         }
 
         try {
-            URL url_ = new URI(url).toURL();
+            URL url = new URI(siteUrl).toURL();
 
             // оставляем url без path
-            String siteURL = url.replace(url_.getPath(), "");
+            String siteURL = siteUrl.replace(url.getPath(), "");
 
             return siteRepository.findByUrl(siteURL);
         } catch(Exception ex) {
-            Application.LOGGER.error("Сайт " + url + " не определен", ex);
+            Application.LOGGER.error("Сайт " + siteUrl + " не определен", ex);
         }
 
       return null;
@@ -87,6 +87,7 @@ public class DBRepository {
 
     public void setStatusToIndexFailed(Integer siteId, String lastError) {
         siteRepository.setStatusToIndexFailed(siteId, lastError, LocalDateTime.now());
+        Application.LOGGER.warn(lastError);
     }
 
     public void setLastError(Integer siteId, String lastError) {

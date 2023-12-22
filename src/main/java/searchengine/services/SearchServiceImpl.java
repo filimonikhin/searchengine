@@ -41,15 +41,15 @@ public class SearchServiceImpl implements SearchService {
 
     @Override
     public SearchResponse search(SearchQuery searchQuery) {
-        String msg = "Задан поисковый запрос \"" + searchQuery.getQuery()
-                   + "\" для сайта \"" + searchQuery.getSite() + "\"";
 
-        Application.LOGGER.info(msg);
+        Application.LOGGER.info("Задан поисковый запрос \"" + searchQuery.getQuery()
+                                + "\" для сайта \"" + searchQuery.getSite() + "\"");
 
         try {
             String query = StrUtl.nvl(searchQuery.getQuery(), "");
+
             if (query.isBlank()) {
-                msg = "Задан пустой поисковый запрос";
+                String msg = "Задан пустой поисковый запрос";
                 Application.LOGGER.warn(msg);
                 return new SearchResponse(false, msg);
             }
@@ -58,13 +58,9 @@ public class SearchServiceImpl implements SearchService {
             List<SearchItem> resultSearhList = new ArrayList<>();
 
             // разбиваем запрос на леммы
-            Parser parser = new Parser(LemmaHelper.newInstance());
+            Map<String, Integer> lemmas = new Parser(LemmaHelper.newInstance()).getLemmas(query);
 
-            Map<String, Integer> lemmas = parser.getLemmas(query);
-
-            if (lemmas.size() == 0) {
-                return new SearchResponse(false, "", 0, resultSearhList);
-            }
+            if (lemmas.size() == 0) {return new SearchResponse(false, "", 0, resultSearhList);}
 
             Integer    siteId     = null;
             SiteEntity siteEntity = null;
@@ -73,7 +69,7 @@ public class SearchServiceImpl implements SearchService {
                 siteEntity = dbRepository.getSite(searchQuery.getSite());
 
                 if (siteEntity == null) {
-                    msg = "Сайт " + searchQuery.getSite() + " не найден в БД";
+                    String msg = "Сайт " + searchQuery.getSite() + " не найден в БД";
                     Application.LOGGER.warn(msg);
                     return new SearchResponse(false, msg);
                 }
@@ -82,56 +78,60 @@ public class SearchServiceImpl implements SearchService {
             }
 
             if (!siteIsIndexed(siteEntity)) {
-                return new SearchResponse(false, (siteEntity == null ? "Один из сайтов не проиндексирован" : "Сайт не проиндексирован"));
+                return new SearchResponse(false, (siteEntity == null ? "Один из сайтов не проиндексирован"
+                                                                     : "Сайт не проиндексирован"));
             }
 
             // по ТЗ отсекаем леммы, которые встречались на большом кол-ве страниц
             // (значение этого процента dbRepository.MAX_PERCENT_PAGE_BY_LEMMA определяем самостоятельно)
             // получаем леммы по сайту (сайтам) и сортировка в порядке возрастания значения frequency
-            Map<String, Integer> ascLemmas = MapUtl.sortMapByValueAsc(dbRepository.getFilteredLemmas(lemmas.keySet(), siteId, searchConfig.getMaxPercentageOfPage()));
+            Map<String, Integer> ascLemmas = MapUtl.sortMapByValueAsc(dbRepository.getFilteredLemmas(lemmas.keySet(),
+                                               siteId, searchConfig.getMaxPercentageOfPage()));
 
-            if (ascLemmas.size() == 0) {
-                return new SearchResponse(false, "", 0, resultSearhList);
-            }
+            if (ascLemmas.size() == 0) {return new SearchResponse(false, "", 0, resultSearhList);}
 
             lemmas.keySet().removeIf(k -> !ascLemmas.containsKey(k));
-
             Map<Integer, Float> descPages = getOrderedPagesByDesc(siteId, ascLemmas);
-
-            float maxRank = descPages.isEmpty() ? 1 : descPages.values().iterator().next(); // т.к. отсортирована по убыванию
-
-            int offSetIndex = searchQuery.getOffset() == null ?  0 : searchQuery.getOffset();
-            int limitCount  = searchQuery.getLimit()  == null ? 20 : searchQuery.getLimit();
-
-            for (Map.Entry<Integer, Float> pageEntry : descPages.entrySet()) {
-
-                if (offSetIndex-- > 0) {
-                    continue;
-                }
-
-                PageEntity page = dbRepository.findPageById(pageEntry.getKey());
-                SiteEntity site = dbRepository.findSiteById(page.getSiteId());
-
-                SearchItem dataItem = SearchItem.builder()
-                        .site(site.getUrl())
-                        .siteName(site.getName())
-                        .uri(page.getPath())
-                        .title(Jsoup.parse(page.getContent()).title())
-                        .snippet(parser.createSnippet(Jsoup.parse(page.getContent()).text(), lemmas))
-                        .relevance(pageEntry.getValue() / maxRank)
-                        .build();
-                resultSearhList.add(dataItem);
-
-                if (--limitCount == 0) {
-                    break;
-                }
-            }
+            float maxRank = descPages.isEmpty() ? 1 : descPages.values().iterator().next();
+            resultSearhList = getSearchList(descPages, searchQuery, lemmas, maxRank);
 
             return new SearchResponse(true, "", descPages.size(), resultSearhList);
-
         } catch(IOException e) {
             throw new RuntimeException();
         }
+    }
+
+    private List<SearchItem> getSearchList(Map<Integer, Float> pages, SearchQuery searchQuery,
+                                           Map<String, Integer> lemmas, float rank) {
+        List<SearchItem> searchItems = new ArrayList<>();
+        int offSetIndex = searchQuery.getOffset() == null ?  0 : searchQuery.getOffset();
+        int limitCount  = searchQuery.getLimit()  == null ? 20 : searchQuery.getLimit();
+
+        try {
+                Parser parser = new Parser(LemmaHelper.newInstance());
+
+                for (Map.Entry<Integer, Float> pageEntry : pages.entrySet()) {
+
+                    if (offSetIndex-- > 0) {continue;}
+
+                    PageEntity page = dbRepository.findPageById(pageEntry.getKey());
+                    SiteEntity site = dbRepository.findSiteById(page.getSiteId());
+
+                    SearchItem dataItem = SearchItem.builder().site(site.getUrl()).siteName(site.getName())
+                                          .uri(page.getPath()).title(Jsoup.parse(page.getContent()).title())
+                                          .snippet(parser.createSnippet(Jsoup.parse(page.getContent()).text(), lemmas))
+                                          .relevance(pageEntry.getValue() / rank)
+                                          .build();
+
+                    searchItems.add(dataItem);
+
+                    if (--limitCount == 0) {break;}
+                }
+        } catch(IOException e) {
+            throw new RuntimeException();
+        }
+
+        return searchItems;
     }
 
     // проверка, что сайт проиндексирован
@@ -144,9 +144,9 @@ public class SearchServiceImpl implements SearchService {
 
         // выбран поиск по всем сайтам
         for (Site site : siteList.getSites()) {
-            SiteEntity siteEntity_ = dbRepository.getSite(site.getUrl());
+            SiteEntity se = dbRepository.getSite(site.getUrl());
 
-            if (siteEntity_ != null && siteEntity_.getStatus() != StatusType.INDEXED) {
+            if (se != null && se.getStatus() != StatusType.INDEXED) {
                 return false;
             }
         }
@@ -186,7 +186,6 @@ public class SearchServiceImpl implements SearchService {
         if (allFoundPages.isEmpty()) {
             descPages = new HashMap<>();
         } else {
-
             descPages = MapUtl.sortMapByValueDesc(allFoundPages);
         }
 

@@ -43,15 +43,10 @@ public class StartIndexing extends Thread {
             Application.LOGGER.info("==== Start indexing site: " + url + " ====");
 
             PageParserParams params = PageParserParams.builder()
-                                        .pageAddress(url)
-                                        .root(url)
-                                        .siteId(this.siteId)
-                                        .dbRepository(dbRepository)
-                                        .jsoupConfig(jsoupConfig)
-                                        .isRoot(true)
-                                        .fromPage("/")
-                                        .parser(new Parser(LemmaHelper.newInstance()))
-                                        .build();
+                                      .pageAddress(url).root(url).siteId(this.siteId)
+                                      .dbRepository(dbRepository).jsoupConfig(jsoupConfig)
+                                      .isRoot(true).fromPage("/").parser(new Parser(LemmaHelper.newInstance()))
+                                      .build();
 
             Integer res = pool.invoke(new PageParser(params));
             dbRepository.setStatusToIndexed(siteId);

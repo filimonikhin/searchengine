@@ -52,7 +52,14 @@ public class StatisticsServiceImpl implements StatisticsService {
             item.setLemmas(lemmas);
             item.setStatus(siteEntity == null ? "NOT INDEXED" : siteEntity.getStatus().toString());
             item.setError(siteEntity == null ? "Индексирование не запускалось" : siteEntity.getLastError());
-            item.setStatusTime(siteEntity == null ? System.currentTimeMillis() : ZonedDateTime.of(siteEntity.getStatusTime(), ZoneId.systemDefault()).toInstant().toEpochMilli());
+
+            if (siteEntity == null) {
+                item.setStatusTime(System.currentTimeMillis());
+            } else {
+                item.setStatusTime(ZonedDateTime.of(siteEntity.getStatusTime(),
+                                                    ZoneId.systemDefault()).toInstant().toEpochMilli());
+            }
+
             total.setPages(total.getPages() + pages);
             total.setLemmas(total.getLemmas() + lemmas);
             detailed.add(item);

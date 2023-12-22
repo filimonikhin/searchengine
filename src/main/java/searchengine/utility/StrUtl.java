@@ -13,11 +13,11 @@ public class StrUtl {
             return false;
         }
 
-        String [] FILE_EXT_LIST = {".jpg",  ".jpeg", ".png", ".gif",  ".webp", ".pdf", ".eps",
+        String [] fileExtList = {".jpg",  ".jpeg", ".png", ".gif",  ".webp", ".pdf", ".eps",
                                    ".xlsx", ".xls",  ".doc", ".docx", ".ppts", ".ppt", ".icon",
                                    ".bmp",  ".rtf",  ".zip", ".fig",  ".nc",   ".m"};
 
-        for (String ext : FILE_EXT_LIST) {
+        for (String ext : fileExtList) {
             if (url.endsWith(ext) ) {
                 return true;
             }
@@ -27,8 +27,8 @@ public class StrUtl {
     }
 
     public static boolean isContainsBadChar(String url) {
-        Pattern BAD_CHARS = Pattern.compile(".*[?#&].*");
+        Pattern badChars = Pattern.compile(".*[?#&].*");
         url = nvl(url, "");
-        return BAD_CHARS.matcher(url).matches();
+        return badChars.matcher(url).matches();
     }
 }

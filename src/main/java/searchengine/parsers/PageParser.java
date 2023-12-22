@@ -24,6 +24,8 @@ public class PageParser extends RecursiveTask<Integer> {
     private final boolean isRoot;
     private final String fromPage;
     private final Parser parser;
+    private final HashSet<String> links;
+    private final List<PageParser> taskList;
 
     public PageParser(PageParserParams params) {
         this.pageAddress  = params.getPageAddress();
@@ -35,6 +37,8 @@ public class PageParser extends RecursiveTask<Integer> {
         this.isRoot       = params.getIsRoot();
         this.fromPage     = params.getFromPage();
         this.parser       = params.parser;
+        this.links        = new HashSet<>();
+        this.taskList     = new ArrayList<>();
     }
 
     private boolean isBadLink (String path) {
@@ -116,9 +120,7 @@ public class PageParser extends RecursiveTask<Integer> {
     protected Integer compute() {
         int res = 0;
 
-        if (isBadLink(pageAddress)) {
-            return 1;
-        }
+        if (isBadLink(pageAddress)) {return 1;}
 
         if (!AppContext.isIndexing()) {
             stopIndexing();
@@ -126,14 +128,7 @@ public class PageParser extends RecursiveTask<Integer> {
         }
 
         AppContext.incrementThreads();
-
-        try {
-            Thread.sleep(500L + (long) (Math.random() * 1000));
-        } catch (InterruptedException ex) {
-            AppContext.decrementThreads();
-            throw new RuntimeException(ex);
-        }
-
+        delayThread();
         PageWithMessage parsedPage = Parser.getHTMLPage(pageAddress, jsoupConfig);
 
         if (parsedPage.getMessage() != null) {
@@ -144,18 +139,13 @@ public class PageParser extends RecursiveTask<Integer> {
         statusCode = parsedPage.getPage().getCode();
         savePage();
 
-        if (statusCode == 200) {
-            parsePage();
-        }
+        if (statusCode == 200) {parsePage();}
 
         if (isRoot && (statusCode != 200 || pageHTML.isEmpty())) {
-            String msg = "Невозможно получить главную страницу сайта";
-            dbRepository.setStatusToIndexFailed(siteId, msg);
-            Application.LOGGER.warn(msg);
+            dbRepository.setStatusToIndexFailed(siteId, "Невозможно получить главную страницу сайта");
+        } else {
+            dbRepository.updateStatusTimeById(siteId);
         }
-         else {
-             dbRepository.updateStatusTimeById(siteId);
-         }
 
         if (pageHTML.isEmpty()) {
             AppContext.decrementThreads();
@@ -167,56 +157,61 @@ public class PageParser extends RecursiveTask<Integer> {
             return 1;
         }
 
-        List<PageParser> taskList = new ArrayList<>();
-        HashSet<String> links = new HashSet<>();
-
         // получаем все ссылки на странице
         Elements elements = Jsoup.parse(pageHTML).select("a");
+        elements.forEach(this::processElement);
+        for (PageParser task : taskList) {res += task.join();}
 
-        for (Element element : elements) {
-            String link = element.attr("href");
+        AppContext.decrementThreads();
 
-            if (!link.equals("/") && link.startsWith("/")) {
-                link = root + link;
-            }
+        if (isRoot && AppContext.isIndexing()) {
+            dbRepository.setStatusToIndexed(siteId);
+        }
 
-            if (!AppContext.checkedAddresses.contains(link)
-                && !links.contains(link)
+        return res;
+    }
+
+    private void delayThread() {
+        try {
+            Thread.sleep(500L + (long) (Math.random() * 1000));
+        } catch (InterruptedException ex) {
+            AppContext.decrementThreads();
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void processElement(Element element) {
+        String link = element.attr("href");
+
+        if (!link.equals("/") && link.startsWith("/")) {
+            link = root + link;
+        }
+
+        if (!links.contains(link) && isCorrectLink(link)) {
+            links.add(link);
+            AppContext.checkedAddresses.add(link);
+            runTask(link);
+        }
+    }
+
+    private void runTask(String link) {
+        PageParserParams params = PageParserParams.builder()
+                                                  .pageAddress(link).root(root).siteId(siteId)
+                                                  .dbRepository(dbRepository).jsoupConfig(jsoupConfig)
+                                                  .isRoot(false).fromPage(pageAddress).parser(parser)
+                                                  .build();
+        PageParser task = new PageParser(params);
+        task.fork();
+        taskList.add(task);
+    }
+
+    private boolean isCorrectLink(String link) {
+        return (!AppContext.checkedAddresses.contains(link)
                 && AppContext.isIndexing()
                 && link.startsWith(root)
                 && !isBadLink(link)
                 && !link.equals(pageAddress)
-               )
-            {
-                links.add(link);
-                AppContext.checkedAddresses.add(link);
-                PageParserParams params = PageParserParams.builder()
-                                                          .pageAddress(link)
-                                                          .root(root)
-                                                          .siteId(siteId)
-                                                          .dbRepository(dbRepository)
-                                                          .jsoupConfig(jsoupConfig)
-                                                          .isRoot(false)
-                                                          .fromPage(pageAddress)
-                                                          .parser(parser)
-                                                          .build();
-                PageParser task = new PageParser(params);
-                task.fork();
-                taskList.add(task);
-            }
-        }
-
-        for (PageParser task : taskList) {
-            res += task.join();
-        }
-
-        AppContext.decrementThreads();
-
-         if (isRoot && AppContext.isIndexing()) {
-             dbRepository.setStatusToIndexed(siteId);
-         }
-
-        return res;
+               );
     }
 
 }

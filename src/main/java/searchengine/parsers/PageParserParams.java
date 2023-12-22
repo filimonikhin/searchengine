@@ -15,5 +15,5 @@ public class PageParserParams {
     final JsoupConfig jsoupConfig;
     final Boolean isRoot;
     final String fromPage;
-final Parser parser;
+    final Parser parser;
 }
